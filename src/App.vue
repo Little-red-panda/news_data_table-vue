@@ -1,14 +1,32 @@
 <template>
   <div>
-    <h1>Новости науки</h1>
+    <h1>Самые свежие новости науки</h1>
     <v-container>
       <p>Сортировать</p>
-      <v-btn elevation="3" @click ="[isSortData = !isSortData, sortData()]" :class="{'arrowSort': isSortData}">По дате<span></span></v-btn>
-      <v-btn elevation="3" @click ="[isSortSource = !isSortSource, sortSource()]" :class="{'arrowSort': isSortSource}">По источнику<span></span></v-btn>
+      <v-btn
+       elevation="3"
+       @click ="[isSortData = !isSortData, sortData()]"
+       :class="{'arrowSort': isSortData}"
+       >По дате
+       <span></span>
+      </v-btn>
+      <v-btn
+       elevation="3"
+       @click ="[isSortSource = !isSortSource, sortSource()]"
+       :class="{'arrowSort': isSortSource}"
+       >По источнику
+       <span></span>
+      </v-btn>
+      <v-text-field
+       label="Поиск новостей"
+       :rules="rules"
+       hide-details="auto"
+       v-model="searchNews"
+    ></v-text-field>
     </v-container>
     <v-data-table
       :headers="headers"
-      :items="news"
+      :items="filteredNews"
       class="elevation-1"
       disable-sort
       disable-pagination
@@ -16,6 +34,10 @@
     >
     <template  v-slot:item.description="{ item }">
       <span v-html="item.description"></span>
+    </template>
+
+    <template  v-slot:item.source.name="{ item }">
+      <span>{{ item.source.name | lowercase }}</span>
     </template>
       <!-- <template v-slot:item.publishedAt="{ item }">
         <v-chip>
@@ -39,6 +61,7 @@ export default {
     return {
       isSortData: false,
       isSortSource: false,
+      searchNews: '',
       news: [],
       search: '',
       headers: [
@@ -51,6 +74,15 @@ export default {
         { text: 'Заголовок', value: 'title' },
         { text: 'Содержание', value: 'description' }
       ]
+    }
+  },
+
+  filters: {
+    lowercase (value) {
+      if (value[0] === 'W') {
+        return value.toLowerCase()
+      }
+      return value
     }
   },
 
@@ -68,12 +100,13 @@ export default {
   },
 
   computed: {
-    // sortData () {
-    //   if (this.isSort) {
-    //     this.news.sort((a, b) => a.publishedAt > b.publishedAt ? 1 : -1)
-    //   } else {
-    //     this.news.sort((a, b) => a.publishedAt < b.publishedAt ? 1 : -1)
-    //   }
+    filteredNews () {
+      const filter = new RegExp(this.searchNews, 'i')
+      return this.news.filter(el => el.description.match(filter) || el.title.match(filter))
+      // return this.news.filter(item => {
+      //   return item.indexOf(this.searchNews) !== -1
+      // })
+    }
   },
 
   methods: {
