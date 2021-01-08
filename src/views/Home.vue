@@ -2,6 +2,7 @@
   <div>
     <h1>Самые свежие новости науки</h1>
     <v-container>
+
       <p>Сортировать</p>
       <v-btn
        elevation="3"
@@ -24,6 +25,7 @@
        hide-details="auto"
        v-model="searchNews"
     ></v-text-field>
+
     <router-link to="/about">
       <v-btn
         elevation="3"
@@ -32,24 +34,43 @@
         >Добавить новость
       </v-btn>
     </router-link>
-    </v-container>
-    <v-data-table
-      :headers="headers"
-      :items="filteredNews"
-      class="elevation-1"
-      disable-sort
-      disable-pagination
-      hide-default-footer
-    >
-    <template  v-slot:item.description="{ item }">
-      <span v-html="item.description"></span>
-    </template>
 
-    <template  v-slot:item.source.name="{ item }">
-      <span>{{ item.source.name | lowercase }}</span>
-    </template>
-    </v-data-table>
+    </v-container>
+
+    <section v-if="errored">
+      <p>К сожалению, в настоящий момент информация недоступна. Повторите попытку позже.</p>
+    </section>
+
+    <section v-else>
+
+      <template v-if="loading">
+        <v-data-table
+          class="elevation-1"
+          loading
+          loading-text="Загрузка... Пожалуйста, подождите"
+        ></v-data-table>
+      </template>
+
+      <template>
+        <v-data-table
+          :headers="headers"
+          :items="filteredNews"
+          class="elevation-1"
+          disable-sort
+          disable-pagination
+          hide-default-footer
+        >
+        <template  v-slot:item.description="{ item }">
+          <span v-html="item.description"></span>
+        </template>
+        <template  v-slot:item.source.name="{ item }">
+          <span>{{ item.source.name | lowercase }}</span>
+        </template>
+        </v-data-table>
+      </template>
+    </section>
     <router-view></router-view>
+
     <div class="about">
       <h1>Новая свежая новость</h1>
       <router-link to="/">
@@ -59,8 +80,11 @@
         >Вернуться к новостям
         </v-btn>
       </router-link>
+
       <v-container>
+
         <form @submit.prevent="onSubmit">
+
           <v-text-field
             v-model="inputSource"
             :error-messages="inputSourceErrors"
@@ -70,6 +94,7 @@
             required
             @blur="$v.inputSource.$touch()"
           ></v-text-field>
+
           <v-text-field
             v-model="inputTitle"
             :error-messages="inputTitleErrors"
@@ -79,6 +104,7 @@
             required
             @blur="$v.inputTitle.$touch()"
           ></v-text-field>
+
           <v-textarea
             v-model="inputDescription"
             :error-messages="inputDescriptionErrors"
@@ -88,6 +114,17 @@
             hide-details="auto"
             no-resize
           ></v-textarea>
+
+          <v-text-field
+            v-model="inputUrl"
+            :error-messages="inputUrlErrors"
+            :class="{'is-invalid': $v.inputUrl.$error}"
+            label="ССЫЛКА НА НОВОСТЬ"
+            required
+            url
+            @blur="$v.inputUrl.$touch()"
+          ></v-text-field>
+
           <v-btn
             type="submit"
             :disabled="$v.$invalid"
@@ -99,7 +136,8 @@
             @click="clear"
           >
             Очистить
-            </v-btn>
+          </v-btn>
+
         </form>
       </v-container>
     </div>
@@ -109,7 +147,7 @@
 <script>
 import axios from 'axios'
 import { validationMixin } from 'vuelidate'
-import { required, maxLength } from 'vuelidate/lib/validators'
+import { required, maxLength, url } from 'vuelidate/lib/validators'
 export default {
   name: 'Home',
   mixins: [validationMixin],
@@ -120,6 +158,8 @@ export default {
       isSortSource: false,
       searchNews: '',
       news: [],
+      loading: true,
+      errored: false,
       search: '',
       headers: [
         {
@@ -134,13 +174,15 @@ export default {
       inputSource: '',
       inputTitle: '',
       inputDescription: '',
+      inputUrl: '',
       newNews: {
         publishedAt: '',
         source: {
           name: ''
         },
         title: '',
-        description: ''
+        description: '',
+        url: ''
       }
     }
   },
@@ -148,15 +190,13 @@ export default {
   validations: {
     inputSource: { required, maxLength: maxLength(20) },
     inputTitle: { required, maxLength: maxLength(120) },
-    inputDescription: { maxLength: maxLength(250) }
+    inputDescription: { maxLength: maxLength(250) },
+    inputUrl: { required, url }
   },
 
   filters: {
     lowercase (value) {
-      if (value[0] === 'W') {
-        return value.toLowerCase()
-      }
-      return value
+      return value.toLowerCase()
     }
   },
 
@@ -167,10 +207,19 @@ export default {
         console.log(this.news)
         this.news.forEach(function (newsItem) {
           newsItem.publishedAt = new Date(newsItem.publishedAt).toLocaleDateString()
-          newsItem.description = '<p>' + newsItem.description + '</p>'
+          if (newsItem.description === null) {
+            newsItem.description = ''
+          }
+          newsItem.description = '<p>' + newsItem.description + ' <a href="' + newsItem.url + '">[Подробнее]</a></p>'
+          // newsItem.url = '<a href="' + newsItem.url + '">' + newsItem.source.name.toLowerCase() + '</a>'
           return newsItem
         })
       })
+      .catch(error => {
+        console.log(error)
+        this.errored = true
+      })
+      .finally(() => (this.loading = false))
   },
 
   computed: {
@@ -196,6 +245,13 @@ export default {
       const errors = []
       if (!this.$v.inputDescription.$dirty) return errors
       !this.$v.inputDescription.maxLength && errors.push('Длина описания не может превышать 250 символов')
+      return errors
+    },
+    inputUrlErrors () {
+      const errors = []
+      if (!this.$v.inputUrl.$dirty) return errors
+      !this.$v.inputUrl.required && errors.push('Укажите URL новости')
+      !this.$v.inputUrl.url && errors.push('Несоответствующий формат')
       return errors
     }
   },
