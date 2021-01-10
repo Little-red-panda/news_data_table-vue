@@ -75,14 +75,16 @@
 
     <div class="fresh-news" v-if="isVisible">
       <span
+        tabindex="0"
         class="fresh-news__close"
         @click="isVisible = !isVisible"
+        @keyup.esc="isVisible = false"
       ></span>
       <h2>Новая свежая новость</h2>
 
       <v-container class="fresh-news__form">
 
-        <form @submit.prevent="onSubmit">
+        <form @submit.prevent>
 
           <v-text-field
             class="fresh-news__input-source"
@@ -106,17 +108,6 @@
             @blur="$v.inputTitle.$touch()"
           ></v-text-field>
 
-          <v-textarea
-            class="fresh-news__input-description"
-            v-model="inputDescription"
-            :error-messages="inputDescriptionErrors"
-            :counter="250"
-            :class="{'is-invalid': $v.inputDescription.$error}"
-            label="ОПИСАНИЕ НОВОСТИ"
-            hide-details="auto"
-            no-resize
-          ></v-textarea>
-
           <v-text-field
             class="fresh-news__input-url"
             v-model="inputUrl"
@@ -127,6 +118,17 @@
             url
             @blur="$v.inputUrl.$touch()"
           ></v-text-field>
+
+          <v-textarea
+            class="fresh-news__input-description"
+            v-model="inputDescription"
+            :error-messages="inputDescriptionErrors"
+            :counter="250"
+            :class="{'is-invalid': $v.inputDescription.$error}"
+            label="ОПИСАНИЕ НОВОСТИ"
+            hide-details="auto"
+            no-resize
+          ></v-textarea>
 
           <v-btn
             class="fresh-news__btn-submit"
@@ -143,12 +145,6 @@
             Очистить
           </v-btn>
 
-          <v-btn
-            class="fresh-news__btn-back"
-            elevation="3"
-            @click="isVisible = !isVisible"
-          >Вернуться к новостям
-          </v-btn>
         </form>
       </v-container>
     </div>
@@ -213,18 +209,20 @@ export default {
     }
   },
 
+  created: function () {
+    document.addEventListener('keyup', this.myMethod)
+  },
+
   mounted () {
     axios.get('http://newsapi.org/v2/top-headlines?country=ru&category=science&apiKey=595eb52772fc46a0a2e1ec29428c872d')
       .then(response => {
         this.news = response.data.articles
-        console.log(this.news)
         this.news.forEach(function (newsItem) {
           newsItem.publishedAt = new Date(newsItem.publishedAt).toLocaleDateString()
           if (newsItem.description === null) {
             newsItem.description = ''
           }
           newsItem.description = '<p>' + newsItem.description + ' <a href="' + newsItem.url + '">[Подробнее]</a></p>'
-          // newsItem.url = '<a href="' + newsItem.url + '">' + newsItem.source.name.toLowerCase() + '</a>'
           return newsItem
         })
       })
@@ -264,15 +262,12 @@ export default {
       const errors = []
       if (!this.$v.inputUrl.$dirty) return errors
       !this.$v.inputUrl.required && errors.push('Укажите URL новости')
-      !this.$v.inputUrl.url && errors.push('Несоответствующий формат')
+      !this.$v.inputUrl.url && errors.push('Несоответствует формату "http://..."')
       return errors
     }
   },
 
   methods: {
-    onSubmit () {
-      console.log('Новость добавлена')
-    },
     sortData () {
       if (this.isSortData) {
         this.news.sort((a, b) => a.publishedAt > b.publishedAt ? 1 : -1)
@@ -292,18 +287,32 @@ export default {
       this.newNews.publishedAt = new Date().toLocaleDateString()
       this.newNews.source.name = this.inputSource
       this.newNews.title = this.inputTitle
-      this.newNews.description = this.inputDescription
-      console.log(this.newNews)
-      console.log(this.publishedAt)
+      this.newNews.description = this.inputDescription + ' <a href="' + this.inputUrl + '">[Подробнее]</a>'
+      this.newNews.url = this.inputUrl
       this.news.push(this.newNews)
       alert('Новость добавлена')
-      return this.news
+      this.newNews = {
+        publishedAt: '',
+        source: {
+          name: ''
+        },
+        title: '',
+        description: '',
+        url: ''
+      }
+      return this.newNews
     },
     clear () {
       this.$v.$reset()
       this.inputSource = ''
       this.inputTitle = ''
       this.inputDescription = ''
+      this.inputUrl = ''
+    },
+    myMethod (event) {
+      if (event.keyCode === 27) {
+        this.isVisible = false
+      }
     }
   }
 }
@@ -330,8 +339,10 @@ h1 {
 }
 
 .sort__text {
-  font-weight: bold;
-  font-size: 24px;
+  margin: 0;
+  font-weight: 400;
+  font-size: 26px;
+  line-height: 26px;
   margin-right: 20px;
 }
 
@@ -392,8 +403,8 @@ h1 {
   width: 30px;
   height: 30px;
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 20px;
+  right: 20px;
   transition: 0.2s;
 }
 
@@ -432,7 +443,7 @@ h2 {
   margin: 0 0 30px;
 }
 
-.fresh-news__input-url {
+.fresh-news__input-description {
   margin-bottom: 20px;
 }
 
@@ -441,15 +452,7 @@ h2 {
 }
 
 .fresh-news__btn-submit {
-  margin: 0 20px 0 30px;
+  margin: 0 30px;
 }
 
-.fresh-news__btn-clear {
-  margin: 0 20px 0 0;
-}
-
-.fresh-news__btn-back {
-  float: right;
-  margin-right: 30px;
-}
 </style>
