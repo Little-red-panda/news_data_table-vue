@@ -1,24 +1,8 @@
-# test-aisa
+### Небольшой шаблон с выводом новостей в виде таблицы. Доступна сортировка по дате и источнику и фильтрация по поисковой строке. Так же можно добавлять свои новости.
 
-## Project setup
-```
-npm install
-```
-
-### Compiles and hot-reloads for development
+### Запустить проект
 ```
 npm run serve
 ```
+### Хотела задеплоить все на версель или нетлифай, но апиха позволяет фетчить только с локального серва :(
 
-### Compiles and minifies for production
-```
-npm run build
-```
-
-### Lints and fixes files
-```
-npm run lint
-```
-
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
